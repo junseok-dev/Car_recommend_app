@@ -155,7 +155,8 @@ if not api_key:
     else:
         st.stop()
 
-elif api_key:
+# API 키가 있으면 앱 실행
+if api_key:
     with st.spinner("자동차 데이터를 불러오는 중입니다..."):
         vectorstore = init_rag_system()
         df = load_car_data()

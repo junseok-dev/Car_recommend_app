@@ -1,0 +1,15 @@
+streamlit
+pandas
+numpy
+matplotlib
+seaborn
+plotly
+koreanize-matplotlib
+python-dotenv
+streamlit-audiorecorder
+openai
+langchain
+langchain-core
+langchain-openai
+langchain-community
+faiss-cpu

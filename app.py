@@ -17,7 +17,25 @@ from langchain_core.output_parsers import StrOutputParser
 
 # --- 0. 환경 변수 로드 ---
 load_dotenv()
-api_key = os.getenv("OPENAI_API_KEY")
+
+
+# .env 파일이나 Streamlit Secrets에서 API 키 로드
+def get_api_key():
+    """Streamlit Secrets 또는 .env 파일에서 API 키 로드"""
+    # 1. Streamlit Secrets 확인 (배포 환경)
+    if "OPENAI_API_KEY" in st.secrets:
+        return st.secrets["OPENAI_API_KEY"]
+
+    # 2. 환경 변수 확인 (.env 파일)
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+
+    # 3. 없으면 UI에서 입력받기
+    return None
+
+
+api_key = get_api_key()
 
 # --- 1. 앱 설정 ---
 st.set_page_config(page_title="Global Car AI 소믈리에", layout="wide")
@@ -113,7 +131,31 @@ def init_rag_system():
 
 
 # --- 3. 메인 로직 ---
-if api_key:
+if not api_key:
+    st.warning("⚠️ API 키가 필요합니다")
+    st.info(
+        """
+    **로컬 실행:** `.env` 파일에 `OPENAI_API_KEY=sk-...` 추가
+    
+    **Streamlit Cloud 배포:** 
+    1. 리포지토리의 `Settings` → `Secrets` 이동
+    2. 다음 내용 추가:
+    ```
+    OPENAI_API_KEY = "sk-..."
+    ```
+    """
+    )
+
+    # UI에서 직접 입력 받기 (테스트용)
+    api_key_input = st.text_input(
+        "🔑 또는 여기에 API 키를 입력하세요 (테스트용):", type="password"
+    )
+    if api_key_input:
+        api_key = api_key_input
+    else:
+        st.stop()
+
+elif api_key:
     with st.spinner("자동차 데이터를 불러오는 중입니다..."):
         vectorstore = init_rag_system()
         df = load_car_data()
@@ -257,4 +299,4 @@ if api_key:
                         {"role": "assistant", "content": response}
                     )
 else:
-    st.warning(".env 파일에 API 키가 있는지 확인해주세요.")
+    pass

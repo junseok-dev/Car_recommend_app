@@ -45,25 +45,102 @@ st.title("🏎️ 전 세계 자동차 추천 RAG 시스템")
 # --- 2. RAG 시스템 초기화 (절대 경로 로직 적용) ---
 @st.cache_resource
 def load_car_data():
-    """CSV 데이터 로드"""
+    """CSV 데이터 로드 - 로컬 또는 온라인에서"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(current_dir, "data", "Cars_Datasets_2025.csv")
 
-    if not os.path.exists(file_path):
-        st.error(f"⚠️ 파일을 찾을 수 없습니다!")
+    # 1. 로컬 파일 확인
+    if os.path.exists(file_path):
+        encoding_list = ["utf-8", "euc-kr", "cp949", "latin-1", "iso-8859-1"]
+        for encoding in encoding_list:
+            try:
+                df = pd.read_csv(file_path, encoding=encoding)
+                return df
+            except:
+                continue
+
+    # 2. 로컬 파일 없음 → Streamlit Cloud 환경이거나 배포 환경
+    st.warning("📁 로컬 데이터 파일을 찾을 수 없습니다. 온라인에서 로드 중...")
+
+    # 일단 더미 데이터 제공 (또는 온라인 URL에서 로드)
+    try:
+        # 예시: 공개 CSV URL에서 로드 (또는 GitHub Raw 링크)
+        # 사용자가 제공한 데이터를 GitHub에 업로드 후 URL 변경 필요
+        sample_data = {
+            "Company Names": [
+                "FERRARI",
+                "ROLLS ROYCE",
+                "Ford",
+                "MERCEDES",
+                "BMW",
+                "Audi",
+            ],
+            "Cars Names": ["SF90 STRADALE", "PHANTOM", "KA+", "GT 63 S", "M440i", "A6"],
+            "Engines": ["V8", "V12", "1.2L Petrol", "V8", "Twin-Turbo", "Turbo"],
+            "CC/Battery Capacity": [
+                "3990 cc",
+                "6749 cc",
+                "1,200 cc",
+                "3,982 cc",
+                "2,998 cc",
+                "1,984 cc",
+            ],
+            "HorsePower": [
+                "963 hp",
+                "563 hp",
+                "70-85 hp",
+                "630 hp",
+                "382 hp",
+                "228 hp",
+            ],
+            "Total Speed": [
+                "340 km/h",
+                "250 km/h",
+                "165 km/h",
+                "250 km/h",
+                "250 km/h",
+                "240 km/h",
+            ],
+            "Performance(0 - 100 )KM/H": [
+                "2.5 sec",
+                "5.3 sec",
+                "10.5 sec",
+                "3.2 sec",
+                "4.5 sec",
+                "6.2 sec",
+            ],
+            "Cars Prices": [
+                "$1,100,000",
+                "$460,000",
+                "$12,000-$15,000",
+                "$161,000",
+                "$85,000",
+                "$55,000",
+            ],
+            "Fuel Types": [
+                "plug in hybrid",
+                "Petrol",
+                "Petrol",
+                "Petrol",
+                "Petrol",
+                "Petrol",
+            ],
+            "Seats": [2, 5, 5, 4, 5, 5],
+            "Torque": [
+                "800 Nm",
+                "900 Nm",
+                "100 - 140 Nm",
+                "900 Nm",
+                "500 Nm",
+                "400 Nm",
+            ],
+        }
+        df = pd.DataFrame(sample_data)
+        st.info("✅ 샘플 데이터를 로드했습니다. (전체 데이터 업로드 필요)")
+        return df
+    except Exception as e:
+        st.error(f"❌ 데이터 로드 실패: {e}")
         return None
-
-    encoding_list = ["utf-8", "euc-kr", "cp949", "latin-1", "iso-8859-1"]
-    df = None
-
-    for encoding in encoding_list:
-        try:
-            df = pd.read_csv(file_path, encoding=encoding)
-            break
-        except:
-            continue
-
-    return df
 
 
 @st.cache_resource
@@ -75,32 +152,116 @@ def init_rag_system():
     # [수정] 사용자가 바꾼 파일 이름과 data 폴더 경로를 결합합니다.
     file_path = os.path.join(current_dir, "data", "Cars_Datasets_2025.csv")
 
-    # 파일 존재 여부 확인 및 디버깅 메시지
-    if not os.path.exists(file_path):
-        st.error(f"⚠️ 파일을 찾을 수 없습니다!")
-        st.info(f"현재 앱이 찾고 있는 경로: {file_path}")
-        # 혹시 몰라 현재 폴더 구조를 출력해줍니다.
-        if os.path.exists(os.path.join(current_dir, "data")):
-            st.write(
-                "data 폴더 내 파일들:", os.listdir(os.path.join(current_dir, "data"))
-            )
-        else:
-            st.write("data 폴더 자체가 존재하지 않습니다.")
-        return None
-
     try:
-        # Step 1: 데이터 로드 (인코딩 자동 감지)
-        # 여러 인코딩 시도
-        encoding_list = ["utf-8", "euc-kr", "cp949", "latin-1", "iso-8859-1"]
+        # Step 1: 데이터 로드
         df = None
 
-        for encoding in encoding_list:
-            try:
-                df = pd.read_csv(file_path, encoding=encoding)
-                st.info(f"✅ 인코딩: {encoding}으로 로드됨")
-                break
-            except:
-                continue
+        # 로컬 파일 확인
+        if os.path.exists(file_path):
+            encoding_list = ["utf-8", "euc-kr", "cp949", "latin-1", "iso-8859-1"]
+            for encoding in encoding_list:
+                try:
+                    df = pd.read_csv(file_path, encoding=encoding)
+                    break
+                except:
+                    continue
+
+        # 로컬 파일 없으면 샘플 데이터 사용
+        if df is None:
+            st.warning("📁 로컬 CSV를 찾을 수 없습니다. 샘플 데이터로 진행합니다.")
+            sample_data = {
+                "Company Names": [
+                    "FERRARI",
+                    "ROLLS ROYCE",
+                    "Ford",
+                    "MERCEDES",
+                    "BMW",
+                    "Audi",
+                ],
+                "Cars Names": [
+                    "SF90 STRADALE",
+                    "PHANTOM",
+                    "KA+",
+                    "GT 63 S",
+                    "M440i",
+                    "A6",
+                ],
+                "Engines": ["V8", "V12", "1.2L Petrol", "V8", "Twin-Turbo", "Turbo"],
+                "CC/Battery Capacity": [
+                    "3990 cc",
+                    "6749 cc",
+                    "1,200 cc",
+                    "3,982 cc",
+                    "2,998 cc",
+                    "1,984 cc",
+                ],
+                "HorsePower": [
+                    "963 hp",
+                    "563 hp",
+                    "70-85 hp",
+                    "630 hp",
+                    "382 hp",
+                    "228 hp",
+                ],
+                "Total Speed": [
+                    "340 km/h",
+                    "250 km/h",
+                    "165 km/h",
+                    "250 km/h",
+                    "250 km/h",
+                    "240 km/h",
+                ],
+                "Performance(0 - 100 )KM/H": [
+                    "2.5 sec",
+                    "5.3 sec",
+                    "10.5 sec",
+                    "3.2 sec",
+                    "4.5 sec",
+                    "6.2 sec",
+                ],
+                "Cars Prices": [
+                    "$1,100,000",
+                    "$460,000",
+                    "$12,000-$15,000",
+                    "$161,000",
+                    "$85,000",
+                    "$55,000",
+                ],
+                "Fuel Types": [
+                    "plug in hybrid",
+                    "Petrol",
+                    "Petrol",
+                    "Petrol",
+                    "Petrol",
+                    "Petrol",
+                ],
+                "Seats": [2, 5, 5, 4, 5, 5],
+                "Torque": [
+                    "800 Nm",
+                    "900 Nm",
+                    "100 - 140 Nm",
+                    "900 Nm",
+                    "500 Nm",
+                    "400 Nm",
+                ],
+            }
+            df = pd.DataFrame(sample_data)
+
+        # 문서로 변환
+        documents = []
+        for idx, row in df.iterrows():
+            # 각 행을 텍스트로 변환
+            content = " | ".join([f"{col}: {row[col]}" for col in df.columns])
+            doc = Document(page_content=content, metadata={"index": idx})
+            documents.append(doc)
+
+        # Step 2: 문서 분할 및 임베딩
+        text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        docs = text_splitter.split_documents(documents)
+
+        embeddings = OpenAIEmbeddings(
+            model="text-embedding-3-small", openai_api_key=api_key
+        )
 
         if df is None:
             st.error("CSV 파일을 읽을 수 없습니다. 지원하지 않는 인코딩입니다.")

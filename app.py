@@ -47,7 +47,7 @@ st.title("🏎️ 전 세계 자동차 추천 RAG 시스템")
 def load_car_data():
     """CSV 데이터 로드 - 로컬 또는 온라인에서"""
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(current_dir, "data", "Cars_Datasets_2025.csv")
+    file_path = os.path.join(current_dir, "Cars_Datasets_2025.csv")
 
     # 1. 로컬 파일 확인
     if os.path.exists(file_path):
@@ -462,3 +462,4 @@ if api_key:
                     )
 else:
     pass
+
